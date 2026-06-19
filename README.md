@@ -43,13 +43,21 @@ Règles Meta intégrées : 1 DM par commentaire, dans une fenêtre de 7 jours, m
 2. Dis à l'agent : **« Lis `CLAUDE.md`, `docs/ARCHITECTURE.md` et `plan.md`, puis exécute les tâches du plan une par une. »**
 3. L'agent codera la partie technique. **Quand il te dira de faire une action dans le dashboard Meta** (créer l'app, App Review…), suis `docs/SETUP-META.md` — c'est toi qui cliques.
 
+## Maintenance : c'est ton agent qui opère
+
+Ce n'est pas une démo jetable, c'est un **service permanent**. Le modèle de maintenance : quand ça casse, **tu ouvres ton agent Claude** et tu lui dis « le service Insta ne marche plus, suis `docs/MAINTENANCE.md` ». Il diagnostique et répare le prévisible (token expiré, erreurs Meta connues). Pour que ça tienne :
+- le **cron** auto-répare le token tous les 60j,
+- l'**alerting** (`ALERT_WEBHOOK_URL`) te prévient quand il faut ouvrir l'agent — sans ça tu ne saurais pas que c'est cassé,
+- pour un problème **inédit**, l'agent escalade vers un humain technique au lieu d'improviser sur du live.
+
 ## Structure
 
 | Chemin | Rôle |
 |---|---|
 | `CLAUDE.md` | Règles pour l'agent (stack, conventions, sécurité) |
-| `.claude/rules/` | Pièges Meta, cycle de vie des tokens, sécurité |
+| `.claude/rules/` | Pièges Meta, cycle de vie des tokens, sécurité, **maintenance** |
 | `docs/SETUP-META.md` | ⭐ Runbook pas-à-pas du dashboard Meta (pour toi, l'humain) |
+| `docs/MAINTENANCE.md` | ⭐ Runbook « ça casse → quoi faire » + quand escalader |
 | `docs/ARCHITECTURE.md` | Le flux technique détaillé |
 | `plan.md` | Tâches découpées pour l'agent |
 | `src/` `app/` | Squelette de code à compléter |

@@ -35,6 +35,15 @@ Bite-sized tasks for the agent. Do them in order. After each: `bun run build` mu
 - [ ] `vercel.json`: schedule the cron (e.g. weekly).
 - [ ] On refresh failure → POST `ALERT_WEBHOOK_URL`. Do not fail silently.
 
+## Phase 4.5 — Observability & self-healing (REQUIRED — this is a maintained service)
+
+This service is operated by the user's agent, not a dev. It must surface its own failures and be diagnosable. See `docs/MAINTENANCE.md` + `.claude/rules/maintenance.md`.
+
+- [ ] `GET /api/healthz`: real checks (token present, `expires_at` in future with margin, Supabase reachable). 200 all-green, 503 otherwise.
+- [ ] **Alerting** to `ALERT_WEBHOOK_URL` on: token refresh failure, repeated send failure, signature-failure spike, `comments` change that fails the schema. Each alert says what to do (open agent / escalate).
+- [ ] Structured logging on webhook + cron + send (ids you need to debug, never tokens/PII).
+- [ ] Retry-with-backoff on transient send failures (respect ~200/h).
+
 ## Phase 5 — Deploy + Meta wiring (manual)
 
 - [ ] Deploy to Vercel. Set all env vars (from `.env.example`) in the Vercel dashboard.
