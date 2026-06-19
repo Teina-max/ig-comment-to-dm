@@ -53,11 +53,18 @@ export async function POST(req: Request) {
     return new NextResponse("Ignored", { status: 200 });
   }
 
-  // Re-validate each change; keep only "comments", ignore the rest (e.g. "messages").
+  // Keep "comments" changes; ignore other fields (e.g. "messages") on purpose.
+  // But a change that IS "comments" yet fails the shape = likely a Meta contract
+  // change — surface it (log + TODO alert), don't drop it silently.
   const comments = parsed.data.entry.flatMap((e) =>
     e.changes.flatMap((c) => {
       const r = commentChangeSchema.safeParse(c);
-      return r.success ? [r.data.value] : [];
+      if (r.success) return [r.data.value];
+      if ((c as { field?: string }).field === "comments") {
+        console.error("comments change failed validation (Meta shape change?)", r.error.issues);
+        // TODO: alert via ALERT_WEBHOOK_URL so a contract change isn't invisible.
+      }
+      return [];
     }),
   );
 

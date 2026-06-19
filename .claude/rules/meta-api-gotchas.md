@@ -13,7 +13,7 @@ Meta sends `hub.mode=subscribe`, `hub.verify_token`, `hub.challenge`. Respond `2
 
 ## Webhook payload (POST) — verify the signature
 
-Meta signs the raw body with `X-Hub-Signature-256: sha256=<hmac>`. Compute HMAC-SHA256 of the **raw, unparsed** request body using your app secret and constant-time compare. Reject mismatches. (Next.js: read the body as text before JSON-parsing — you need the exact bytes.)
+Meta signs the raw body with `X-Hub-Signature-256: sha256=<hmac>`. Compute HMAC-SHA256 of the **raw, unparsed** request body using your app secret and constant-time compare. Reject mismatches. (Next.js: read the RAW bytes via `await req.arrayBuffer()` and HMAC those — do NOT HMAC decoded or re-serialized text, the bytes must match exactly.)
 
 A `comments` event looks like: `entry[].changes[]` with `field: "comments"` and `value` containing `id` (comment id), `text`, `from { id, username }`, `media { id }`.
 
