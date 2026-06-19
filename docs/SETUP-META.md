@@ -43,7 +43,10 @@ Dans l'app Instagram : **Paramètres → Type de compte → Passer en compte pro
    - `instagram_business_basic`
    - `instagram_business_manage_messages`
    - `instagram_business_manage_comments`
-2. **Génère un token d'accès** via le bouton de connexion Instagram. → il sera échangé contre un token longue durée par le code (table `ig_tokens`).
+2. **Génère le premier token (bootstrap)** : c'est l'étape que les gens ratent. Le webhook a besoin d'un token déjà présent en base (`ig_tokens`) pour pouvoir envoyer des DM. Deux façons :
+   - **Via la route OAuth** `app/api/auth/callback/route.ts` (fournie en squelette) : tu autorises l'app via le dialogue Instagram Login, Meta redirige vers cette route avec un `code`, le code l'échange en token longue durée et l'insère en base.
+   - **Ou un script de seed local** one-off qui fait le même échange.
+   Tant que `ig_tokens` est vide, **rien ne part** — même si le webhook reçoit bien les commentaires. C'est le premier truc à vérifier si « ça ne marche pas ».
 3. **Webhooks** : section Webhooks de l'app →
    - **Callback URL** : `https://ton-app.vercel.app/api/webhook`
    - **Verify token** : la chaîne aléatoire que tu as mise dans `META_VERIFY_TOKEN`
@@ -56,13 +59,18 @@ Dans l'app Instagram : **Paramètres → Type de compte → Passer en compte pro
 
 En mode développement, l'app ne peut DM que les comptes ayant un rôle sur l'app (toi). Pour que **n'importe quel follower** reçoive le DM, il faut l'**Advanced Access** sur les permissions messaging/comments, débloqué par l'**App Review**.
 
-Tu devras fournir :
-- **Description du cas d'usage** : « Quand un utilisateur commente un mot-clé sous un reel, on lui envoie un message privé contenant une ressource gratuite qu'il a demandée. »
-- **Une vidéo de démo (screencast)** montrant le parcours complet : commentaire → DM reçu. C'est le critère le plus regardé.
-- **Une politique de confidentialité** hébergée (URL publique). L'agent peut t'en générer une page simple.
-- Éventuellement une **vérification business** (pièces justificatives de l'entreprise).
+### Checklist des livrables (prépare TOUT avant de soumettre)
 
-Délais variables, parfois un refus au 1er passage (souvent : démo pas assez claire ou privacy policy manquante). Prévois 1 à 2 allers-retours.
+- [ ] **Description du cas d'usage**, précise : « Quand un utilisateur commente un mot-clé sous un de nos reels, on lui envoie un message privé contenant une ressource gratuite qu'il a explicitement demandée en commentant. Aucun message à froid. »
+- [ ] **Vidéo de démo (screencast)** — LE critère le plus regardé. Montre le parcours complet, sans coupure : (1) le reel avec l'appel à commenter, (2) un commentaire avec le mot-clé depuis un autre compte, (3) le DM qui arrive. Montre aussi où l'utilisateur consent.
+- [ ] **Politique de confidentialité** hébergée à une URL publique (l'agent peut générer une page `/privacy`). Doit dire quelles données tu traites (commentaires, identifiant Insta) et pourquoi.
+- [ ] **Instructions de suppression de données** (souvent exigées) : une URL ou un callback de *data deletion* indiquant comment un utilisateur fait supprimer ses données.
+- [ ] **Comptes testeurs** : ajoute dans l'app (rôles) les comptes qui serviront à la démo, pour que le reviewer Meta puisse reproduire.
+- [ ] Éventuelle **vérification business** (pièces justificatives de l'entreprise) selon le type d'app.
+
+### Si c'est refusé (ça arrive au 1er passage)
+
+Meta renvoie un motif. Les plus fréquents : vidéo pas assez claire, privacy policy incomplète, ou parcours de consentement pas montré. Corrige le point cité, garde la même app, re-soumets. Prévois **1 à 2 allers-retours** — ce n'est pas un échec, c'est le process.
 
 ## 6. Passer l'app en Live
 

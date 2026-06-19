@@ -9,13 +9,13 @@ Follower comments "GUIDE" under a reel
    │
    ▼   Meta delivers a webhook POST (field: "comments") to /api/webhook
 [ app/api/webhook/route.ts ]
-   │ 1. read RAW body, verify X-Hub-Signature-256 (HMAC-SHA256, app secret)
-   │ 2. zod-parse payload → extract { commentId, text, fromId, mediaId }
-   │ 3. matchKeyword(text) against active rules (Supabase: keyword_rules)
-   │ 4. if match → sendPrivateReply(commentId, rule.responseText)
-   │ 5. log the lead (Supabase: leads) — no PII beyond what you need
+   │ 1. read RAW bytes, verify X-Hub-Signature-256 (HMAC-SHA256, app secret)
+   │ 2. zod-parse envelope, pick out "comments" changes (ignore the rest)
+   │ 3. RESERVE commentId in `leads` (unique insert) — idempotency guard, see below
+   │ 4. matchKeyword(text) against active rules (Supabase: keyword_rules)
+   │ 5. if match → sendPrivateReply → mark the lead dm_sent
    ▼
-[ src/lib/meta-client.ts ] → POST graph.instagram.com/<v>/me/messages
+[ src/lib/meta-client.ts ] → POST graph.instagram.com/<v>/<ig-user-id>/messages
                               { recipient: { comment_id }, message: { text } }
 ```
 
@@ -24,6 +24,7 @@ Follower comments "GUIDE" under a reel
 | File | Responsibility |
 |---|---|
 | `app/api/webhook/route.ts` | `GET` = verification handshake; `POST` = comment event handler |
+| `app/api/auth/callback/route.ts` | OAuth callback — **token bootstrap**: seeds the first long-lived token into `ig_tokens` |
 | `app/api/cron/refresh-token/route.ts` | Vercel Cron target — refresh long-lived token before expiry |
 | `src/lib/meta-client.ts` | All Meta API calls: send private reply, token exchange/refresh |
 | `src/lib/keyword-matcher.ts` | Pure function: comment text → matched rule (or null) |
@@ -40,9 +41,19 @@ leads          ( id, comment_id, from_username, rule_id, dm_sent, created_at )  
 
 RLS on all three. Webhook + cron run server-side with the service role; nothing client-facing needs these.
 
-## Idempotency
+## Idempotency (reserve-first, not check-then-send)
 
-Meta can redeliver a webhook. Before sending, check `leads` for an existing `comment_id` — one private reply per comment is allowed anyway, a duplicate send will fail. Dedup on `comment_id` (unique constraint).
+Meta can redeliver a webhook, and two retries can arrive concurrently. "Check `leads`, then send" is race-prone — both reads miss, both send. Instead **reserve first**:
+
+1. `INSERT` the `comment_id` into `leads` (it has a UNIQUE constraint). If the insert hits a conflict, another invocation already owns this comment → stop.
+2. Only the invocation that won the insert proceeds to `sendPrivateReply`.
+3. On success, update the row (`dm_sent = true`). On failure, leave it for inspection / a retry policy.
+
+This way the unique constraint is the lock, not a prior read.
+
+## Rate limiting (durable, not in-memory)
+
+The ~200/h cap is per account. An in-memory throttle does NOT work on Vercel — each serverless invocation is isolated, so they can't share a counter. For low/normal volume, sending inline and returning 200 after the send is fine. If a reel can go viral, enqueue sends in a table and drain them with a cron/worker that respects the cap. Pick the simple path first; add the queue when volume demands it.
 
 ## Dev vs prod
 

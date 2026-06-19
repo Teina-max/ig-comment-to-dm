@@ -55,10 +55,10 @@ export async function POST(req: Request) {
 
   // Re-validate each change; keep only "comments", ignore the rest (e.g. "messages").
   const comments = parsed.data.entry.flatMap((e) =>
-    e.changes
-      .map((c) => commentChangeSchema.safeParse(c))
-      .filter((r): r is { success: true; data: { value: unknown } } => r.success)
-      .map((r) => r.data.value),
+    e.changes.flatMap((c) => {
+      const r = commentChangeSchema.safeParse(c);
+      return r.success ? [r.data.value] : [];
+    }),
   );
 
   // TODO: reserve → matchKeyword → sendPrivateReply → mark dm_sent.

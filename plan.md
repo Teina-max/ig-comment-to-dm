@@ -18,15 +18,16 @@ Bite-sized tasks for the agent. Do them in order. After each: `bun run build` mu
 - [ ] In `src/types.ts`: zod schema for the `comments` webhook payload; export inferred types.
 - [ ] `POST /api/webhook`: read **raw** body, verify `X-Hub-Signature-256` (HMAC-SHA256 with app secret, constant-time), then zod-parse.
 - [ ] `src/lib/keyword-matcher.ts`: pure `matchKeyword(text, rules)` → rule | null (case-insensitive, trim, whole-word). Unit test it hard — this is pure logic, cover edge cases.
-- [ ] On match: call `sendPrivateReply` (mock in tests), then insert into `leads`. Dedup on `comment_id` (unique constraint).
+- [ ] **Reserve-first** (idempotency): `INSERT` the `comment_id` into `leads` (unique constraint). On conflict → another invocation owns it, stop. Only the winner calls `sendPrivateReply` (mock in tests), then sets `dm_sent`. Never "check then send". See ARCHITECTURE.md.
 
 ## Phase 3 — Meta client + Supabase schema
 
 - [ ] Supabase migrations: `ig_tokens`, `keyword_rules`, `leads` with RLS. Unique index on `leads.comment_id`.
 - [ ] `src/lib/meta-client.ts`:
-  - [ ] `sendPrivateReply(commentId, text)` → POST `me/messages` with `{ recipient: { comment_id }, message: { text } }`. **Verify endpoint/version against live docs.**
+  - [ ] `sendPrivateReply(commentId, text)` → POST `<ig-user-id>/messages` with `{ recipient: { comment_id }, message: { text } }`. **Verify endpoint/version against live docs.**
   - [ ] `exchangeForLongLivedToken(shortLived)` and `refreshLongLivedToken(current)`.
-- [ ] Throttle outbound sends to respect ~200/h.
+- [ ] **Token bootstrap** — implement `app/api/auth/callback/route.ts`: exchange `code` → short-lived → long-lived → upsert `ig_tokens`. This is what gets the FIRST token into the DB; without it nothing runs. (Or a one-off local seed script doing the same steps.)
+- [ ] Rate limit: send inline for normal volume. If virality is likely, design a durable queue table + cron drain that respects ~200/h — NOT an in-memory throttle (serverless invocations are isolated).
 
 ## Phase 4 — Token refresh cron
 

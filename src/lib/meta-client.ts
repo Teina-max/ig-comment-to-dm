@@ -9,19 +9,30 @@
 const VERSION = process.env.META_API_VERSION ?? "v23.0";
 const GRAPH = `https://graph.instagram.com/${VERSION}`;
 
+function igUserId(): string {
+  const id = process.env.IG_USER_ID;
+  if (!id) throw new Error("Missing IG_USER_ID");
+  return id;
+}
+
 /**
  * Send a private-reply DM in response to a comment.
  * One reply per comment, within 7 days, ~200/h/account.
  *
+ * Endpoint: we use the explicit `/{ig-user-id}/messages`. Instagram Login also
+ * accepts `/me/messages` (me = the token's account), but the explicit id is more
+ * robust and we already have IG_USER_ID. Verify version/scope against live docs.
+ *
  * TODO: read the long-lived token from the `ig_tokens` table (src/lib/supabase),
- * not from env. Throttle to respect the rate limit. Handle/log Meta error bodies.
+ * not from env. Respect the ~200/h cap with a durable queue/lease (NOT an
+ * in-memory throttle — serverless invocations are isolated). Log Meta error bodies.
  */
 export async function sendPrivateReply(
   commentId: string,
   text: string,
   accessToken: string,
 ): Promise<void> {
-  const res = await fetch(`${GRAPH}/me/messages`, {
+  const res = await fetch(`${GRAPH}/${igUserId()}/messages`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,

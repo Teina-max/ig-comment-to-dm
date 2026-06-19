@@ -3,6 +3,8 @@
 > Remplaçant maison de la fonction « commente un mot-clé → reçois un DM avec une ressource » de ManyChat, pour **un compte Instagram Pro**.
 > Pensé pour être **construit par un agent Claude Code** en suivant le plan fourni.
 
+> ⚠️ **Ce repo n'est PAS une app prête à lancer.** C'est un **scaffold** : specs, règles, runbook et squelette de code. L'agent fait d'abord la **Phase 0** du `plan.md` (init Next.js, tsconfig, migrations…) avant que quoi que ce soit tourne. Ne t'attends pas à un `bun dev` qui marche au clone.
+
 ## ⚠️ À lire AVANT de te lancer (le « gratuit » a un astérisque)
 
 L'API Meta est gratuite et l'hébergement tient dans les free tiers (Vercel + Supabase). **Mais** ~70 % de la difficulté de ce projet n'est **pas du code** — donc ni ce repo ni l'agent ne peuvent la faire à ta place :

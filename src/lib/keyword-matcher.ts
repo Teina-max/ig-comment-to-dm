@@ -16,6 +16,9 @@ export function matchKeyword(
     if (!rule.active) continue;
     const kw = normalize(rule.keyword);
     if (!kw) continue;
+    // NOTE: \b is ASCII-oriented; fine for keywords like "GUIDE". For non-ASCII
+    // keywords, swap to explicit boundary checks. Whitespace is collapsed in
+    // normalize() so multi-word keywords ("guide gratuit") match "guide   gratuit".
     const pattern = new RegExp(`\\b${escapeRegExp(kw)}\\b`);
     if (pattern.test(normalized)) return rule;
   }
@@ -27,6 +30,7 @@ function normalize(s: string): string {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "") // strip combining diacritics
+    .replace(/\s+/g, " ") // collapse whitespace
     .trim();
 }
 

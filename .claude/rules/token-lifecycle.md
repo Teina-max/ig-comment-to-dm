@@ -12,6 +12,8 @@ The #1 reason a self-hosted comment-to-DM stops working: **the access token expi
 
 Each refresh returns a **new** 60-day token — persist it, replacing the old one.
 
+**Bootstrap (steps 1-2) happens once** via `app/api/auth/callback/route.ts`: the OAuth callback receives the `code`, does the exchange, and upserts the first long-lived token into `ig_tokens`. Until that row exists, the webhook has no token and sends nothing — even though it receives comments fine. Build/seed this before testing the send path.
+
 ## Implementation requirements
 
 - Store the token + its `expires_at` in Supabase (table `ig_tokens`), never in env vars (env can't be rotated at runtime).
